@@ -1,7 +1,7 @@
 #!/home/iaw/soft/conda/2024.06.1/envs/pytorch3.9/bin/python
 #################################################################################################################################
 ##python -In PDBNAMEn.pdb -Gs GaussianVersion -OBJ Lig -Charge NUM -Key 1 OR 0 -Where whereisATOMnanme -mode 1 OR 2 OR 3 OR 4
-##IAW  Zhaijihang HENU 
+##IAWNIX HENU 
 ##Linux python3.7
 #################################################################################################################################
 
