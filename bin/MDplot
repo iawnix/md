@@ -1,0 +1,688 @@
+#!/home/iaw/soft/conda/2024.06.1/envs/pytorch3.9/bin/python
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import numpy as np
+import pandas as pd
+import sys
+import math
+
+colors = ["#38184C","#164C45","#CC8D1A","#802922","#BDE038","#10454F","#16232E","#024059","#4A4633","#FF81D0"]
+markers = ["o","v","^","s","*","D","p","<",">","P","X"]
+# 设置字体格式
+from matplotlib.font_manager import FontProperties
+font_path="/home/iaw/MYscrip/font/times.ttf"
+font_prop = FontProperties(fname=font_path)
+plt.switch_backend("agg")
+plt.rcParams["axes.labelweight"] ="bold"
+plt.rcParams["font.family"]=font_prop.get_name()
+plt.rcParams["font.weight"]="bold"
+plt.rcParams["font.size"]=20
+plt.tight_layout()
+
+def initdraw():
+    # 创建你画布
+    fig,ax = plt.subplots()
+    # 设置边框
+    ax.tick_params(
+          which='both'
+        , bottom=True
+        , left=True
+        , direction='out'
+        , width=2 
+        , length=6
+    )
+    ax.spines['bottom'].set_linewidth(2)
+    ax.spines['top'].set_linewidth(2)
+    ax.spines['left'].set_linewidth(2)
+    ax.spines['right'].set_linewidth(2)
+    plt.tight_layout()
+    return fig, ax
+ 
+def drawRMSD_O(Frame,Rmsd,Split_list,fname):
+
+    # 创建你画布
+    fig,ax = initdraw()
+    
+    # 设置标题
+    #ax.set_title("RMSD By Residue@CA,C,N,O")
+
+    y_max = math.ceil(max(Rmsd))
+    y_min = math.floor(min(Rmsd))
+    x_max = math.ceil(max(Frame))
+    x_min = math.floor(min(Frame))
+    ax.plot(Frame,Rmsd,color="#002c53",linewidth=1.5,linestyle="-",marker="o",markersize=0.5)
+
+    ax.tick_params(which='major'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    ax.tick_params(which='minor'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+
+    # 主次刻度线
+    ax.xaxis.set_major_locator(ticker.MultipleLocator((int(x_max-x_min)/4)))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator((int(x_max-x_min)/8)))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator((int(y_max-y_min)/4)))
+    ax.yaxis.set_minor_locator(ticker.MultipleLocator((int(y_max-y_min)/8)))
+
+    if Split_list:
+        # 绘制分割线
+        for i in Split_list:
+            plt.vlines(i
+                       ,y_min-(int(y_max-y_min)/8)
+                       ,y_max+int(y_max-y_min)/8
+                       ,linestyles="dashed"
+                       ,colors="k")
+
+    ax.set_xlabel("The index of Frames")
+    ax.set_ylabel("RMSD (Å)")
+    ax.set_ylim([y_min-(int(y_max-y_min)/8),y_max+int(y_max-y_min)/8])
+    ax.set_xlim([x_min-(int(x_max-x_min)/8),x_max+int(x_max-x_min)/8])
+    #plt.savefig("{}.tiff".format(fname),dpi=300)
+    plt.savefig("{}.png".format(fname),dpi=300)
+
+def drawRMSD_D(data_lis,label_lis):
+
+    # 创建你画布
+    fig,ax = initdraw()
+
+    ax.tick_params(which='major'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    ax.tick_params(which='minor'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    # 设置标题
+    #ax.set_title("RMSD By Residue@CA,C,N,O")
+    # 获取数据的极值
+    y_max = 0
+    y_min = 0
+    x_max = 0
+    x_min = 0
+    for i in range(len(data_lis)):
+        ax.plot(data_lis[i]["x"],data_lis[i]["y"]
+                ,alpha = 0.5
+                ,color=colors[i]
+                ,linewidth=1.5
+                ,linestyle="-"
+                ,marker=markers[i]
+                ,label = label_lis[i]
+                ,markersize=0.5)
+        if i == 0:
+            y_max = max(data_lis[i]["y"])
+            y_min = min(data_lis[i]["y"])
+            x_max = max(data_lis[i]["x"])
+            x_min = min(data_lis[i]["x"])
+        else:
+            if max(data_lis[i]["y"]) >= y_max:
+                y_max = max(data_lis[i]["y"])
+            if min(data_lis[i]["y"]) <= y_min:
+                y_min = min(data_lis[i]["y"])
+            if max(data_lis[i]["x"]) >= x_max:
+                x_max = max(data_lis[i]["x"])
+            if min(data_lis[i]["x"]) <= x_min:
+                x_min = min(data_lis[i]["x"])
+    
+    y_max = math.ceil(y_max)
+    y_min = math.floor(y_min)
+    x_max = math.ceil(x_max)
+    x_min = math.floor(x_min)
+    # 主次刻度线
+    ax.xaxis.set_major_locator(ticker.MultipleLocator((int(x_max-x_min)/4)))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator((int(x_max-x_min)/8)))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator((int(y_max-y_min)/4)))
+    ax.yaxis.set_minor_locator(ticker.MultipleLocator((int(y_max-y_min)/8)))
+
+    ax.set_xlabel("The index of frames")
+    ax.set_ylabel("RMSD (Å)")
+    ax.set_ylim([y_min-(int(y_max-y_min)/8),y_max+int(y_max-y_min)/8])
+    ax.set_xlim([x_min-(int(x_max-x_min)/8),x_max+int(x_max-x_min)/8])
+
+    plt.legend(markerscale = 10)
+    #plt.savefig("RMSD-{}.tiff".format(len(data_lis)),dpi=300)
+    plt.savefig("RMSD-{}.png".format(len(data_lis)),dpi=300)
+
+
+def drawRMSF_O(Frame,Rmsf,Split_list,fname):
+
+    # 创建你画布
+    fig,ax = initdraw()
+
+    ax.tick_params(which='major'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    ax.tick_params(which='minor'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    # 设置标题
+    #ax.set_title("RMSF By Residue@CA,C,N,O")
+    # draw
+    y_max = math.ceil(max(Rmsf))
+    y_min = math.floor(min(Rmsf))
+    x_max = math.ceil(max(Frame))
+    x_min = math.floor(min(Frame))
+
+    ax.plot(Frame,Rmsf,color="#002c53",linewidth=1.5,linestyle="-",marker="o",markersize=0.5)
+
+    # 主次刻度线
+    ax.xaxis.set_major_locator(ticker.MultipleLocator((int(x_max-x_min)/4)))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator((int(x_max-x_min)/8)))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator((int(y_max-y_min)/4)))
+    ax.yaxis.set_minor_locator(ticker.MultipleLocator((int(y_max-y_min)/8)))
+
+    if Split_list:
+        # 绘制分割线
+        for i in Split_list:
+            plt.vlines(i
+                       ,y_min-(int(y_max-y_min)/8)
+                       ,y_max+int(y_max-y_min)/8
+                       ,linestyles="dashed"
+                       ,colors="k")
+
+    ax.set_xlabel("Residue Number")
+    ax.set_ylabel("RMSF (Å)")
+    ax.set_ylim([y_min-(int(y_max-y_min)/8),y_max+int(y_max-y_min)/8])
+    ax.set_xlim([x_min-(int(x_max-x_min)/8),x_max+int(x_max-x_min)/8])
+
+    plt.savefig("{}.png".format(fname),dpi=300)
+
+def drawRMSF_D(data_lis,label_lis):
+
+    # 创建你画布
+    fig,ax = initdraw()
+    # 设置标题
+    #ax.set_title("RMSF By Residue@CA,C,N,O")
+
+    ax.tick_params(which='major'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    ax.tick_params(which='minor'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    # draw
+    y_max = 0
+    y_min = 0
+    x_max = 0
+    x_min = 0
+    for i in range(len(data_lis)):
+        ax.plot(data_lis[i]["x"],data_lis[i]["y"],alpha = 0.8,color=colors[i],linewidth=1.5,linestyle="-",marker=markers[i],label = label_lis[i],markersize=0.8)
+        if i == 0:
+            y_max = max(data_lis[i]["y"])
+            y_min = min(data_lis[i]["y"])
+            x_max = max(data_lis[i]["x"])
+            x_min = min(data_lis[i]["x"])
+        else:
+            if max(data_lis[i]["y"]) >= y_max:
+                y_max = max(data_lis[i]["y"])
+            if min(data_lis[i]["y"]) <= y_min:
+                y_min = min(data_lis[i]["y"])
+            if max(data_lis[i]["x"]) >= x_max:
+                x_max = max(data_lis[i]["x"])
+            if min(data_lis[i]["x"]) <= x_min:
+                x_min = min(data_lis[i]["x"])
+    
+    y_max = math.ceil(y_max)
+    y_min = math.floor(y_min)
+    x_max = math.ceil(x_max)
+    x_min = math.floor(x_min)
+    # 主次刻度线
+    ax.xaxis.set_major_locator(ticker.MultipleLocator((int(x_max-x_min)/4)))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator((int(x_max-x_min)/8)))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator((int(y_max-y_min)/4)))
+    ax.yaxis.set_minor_locator(ticker.MultipleLocator((int(y_max-y_min)/8)))
+
+    ax.set_xlabel("Residue Number")
+    ax.set_ylabel("RMSF (Å)")
+    
+    ax.set_ylim([y_min-(int(y_max-y_min)/8),y_max+int(y_max-y_min)/8])
+    ax.set_xlim([x_min-(int(x_max-x_min)/8),x_max+int(x_max-x_min)/8])
+
+    plt.legend(markerscale = 10)
+    plt.savefig("{}.png".format(len(data_lis)),dpi=300)
+
+def drawPMF1_O(RC,E,Split_list,fname):
+
+    # 创建你画布
+    fig,ax = initdraw()
+
+    ax.tick_params(which='major'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    ax.tick_params(which='minor'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    # 设置标题
+    #ax.set_title("PMF-1D")
+    # draw
+    y_max = max(E)
+    y_min = min(E)
+    x_max = max(RC)
+    x_min = min(RC)
+    y_max = math.ceil(y_max)
+    y_min = math.floor(y_min)
+    x_max = math.ceil(x_max)
+    x_min = math.floor(x_min)
+
+    # 主次刻度线
+    ax.xaxis.set_major_locator(ticker.MultipleLocator((int(x_max-x_min)/4)))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator((int(x_max-x_min)/8)))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator((int(y_max-y_min)/4)))
+    ax.yaxis.set_minor_locator(ticker.MultipleLocator((int(y_max-y_min)/8)))
+
+    ax.plot(RC,E,color="#002c53",linewidth=1.5,linestyle="-",marker="o",markersize=0.5)
+    
+    ax.set_xlabel("RC (Å)")
+    ax.set_ylabel("Potential of mean force (kal/mol)")
+
+    ax.set_ylim([y_min-(int(y_max-y_min)/8),y_max+int(y_max-y_min)/8])
+    ax.set_xlim([x_min-(int(x_max-x_min)/8),x_max+int(x_max-x_min)/8])
+
+    plt.savefig("{}.png".format(fname),dpi=300)
+
+def drawPMF1_D(data_lis,label_lis):
+
+    # 创建你画布
+    fig,ax = initdraw()
+
+    ax.tick_params(which='major'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    ax.tick_params(which='minor'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    # 设置标题
+    #ax.set_title("PMF-1D")
+    # draw
+    y_max = 0
+    y_min = 0
+    x_max = 0
+    x_min = 0
+    for i in range(len(data_lis)):
+        ax.plot(data_lis[i]["x"],data_lis[i]["y"],alpha = 0.9,color=colors[i],linewidth=1.5,linestyle="-",marker=markers[i],label = label_lis[i],markersize=0.5)
+        if i == 0:
+            y_max = max(data_lis[i]["y"])
+            y_min = min(data_lis[i]["y"])
+            x_max = max(data_lis[i]["x"])
+            x_min = min(data_lis[i]["x"])
+        else:
+            if max(data_lis[i]["y"]) >= y_max:
+                y_max = max(data_lis[i]["y"])
+            if min(data_lis[i]["y"]) <= y_min:
+                y_min = min(data_lis[i]["y"])
+            if max(data_lis[i]["x"]) >= x_max:
+                x_max = max(data_lis[i]["x"])
+            if min(data_lis[i]["x"]) <= x_min:
+                x_min = min(data_lis[i]["x"])
+    
+    y_max = math.ceil(y_max)
+    y_min = math.floor(y_min)
+    x_max = math.ceil(x_max)
+    x_min = math.floor(x_min)
+
+    # 主次刻度线
+    ax.xaxis.set_major_locator(ticker.MultipleLocator((int(x_max-x_min)/4)))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator((int(x_max-x_min)/8)))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator((int(y_max-y_min)/4)))
+    ax.yaxis.set_minor_locator(ticker.MultipleLocator((int(y_max-y_min)/8)))
+    
+    ax.set_xlabel("RC (Å)")
+    ax.set_ylabel("Potential of mean force (kal/mol)")
+
+    ax.set_ylim([y_min-(int(y_max-y_min)/8),y_max+int(y_max-y_min)/8])
+    ax.set_xlim([x_min-(int(x_max-x_min)/8),x_max+int(x_max-x_min)/8])
+
+    plt.legend(markerscale = 10)
+    plt.savefig("PMF1d-{}.png".format(len(data_lis)),dpi=300)
+
+def drawFUNC_O(X,Y,x_label,y_label,fname):
+
+    # 创建你画布
+    fig,ax = initdraw()
+
+    ax.tick_params(which='major'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    ax.tick_params(which='minor'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    # draw
+    y_max = max(Y)
+    y_min = min(Y)
+    x_max = max(X)
+    x_min = min(X)
+    ax.plot(X,Y,color="#002c53",linewidth=1.5,linestyle="-",marker="o",markersize=0.5)
+    y_max = math.ceil(y_max)
+    y_min = math.floor(y_min)
+    x_max = math.ceil(x_max)
+    x_min = math.floor(x_min)
+
+    # 主次刻度线
+    ax.xaxis.set_major_locator(ticker.MultipleLocator((int(x_max-x_min)/4)))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator((int(x_max-x_min)/8)))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator((int(y_max-y_min)/4)))
+    ax.yaxis.set_minor_locator(ticker.MultipleLocator((int(y_max-y_min)/8)))
+    
+
+    ax.set_ylim([y_min-(int(y_max-y_min)/8),y_max+int(y_max-y_min)/8])
+    ax.set_xlim([x_min-(int(x_max-x_min)/8),x_max+int(x_max-x_min)/8])
+
+    ax.set_xlabel("{}".format(x_label))
+    ax.set_ylabel("{}".format(y_label))
+
+    plt.savefig("{}.png".format(fname),dpi=300)
+
+def drawFUNC_D(data_lis,label_lis,x_label,y_label):
+
+    # 创建你画布
+    fig,ax = initdraw()
+
+    ax.tick_params(which='major'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    ax.tick_params(which='minor'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    # draw
+    y_max = 0
+    y_min = 0
+    x_max = 0
+    x_min = 0
+    for i in range(len(data_lis)):
+        ax.plot(data_lis[i]["x"],data_lis[i]["y"],alpha = 0.9,color=colors[i],linewidth=1,linestyle="-",marker=markers[i],label = label_lis[i],markersize=0.5)
+        if i == 0:
+            y_max = max(data_lis[i]["y"])
+            y_min = min(data_lis[i]["y"])
+            x_max = max(data_lis[i]["x"])
+            x_min = min(data_lis[i]["x"])
+        else:
+            if max(data_lis[i]["y"]) >= y_max:
+                y_max = max(data_lis[i]["y"])
+            if min(data_lis[i]["y"]) <= y_min:
+                y_min = min(data_lis[i]["y"])
+            if max(data_lis[i]["x"]) >= x_max:
+                x_max = max(data_lis[i]["x"])
+            if min(data_lis[i]["x"]) <= x_min:
+                x_min = min(data_lis[i]["x"])
+
+    if y_max < 1.0:
+        pass
+    else:
+        y_max = math.ceil(y_max)
+        y_min = math.floor(y_min)
+        x_max = math.ceil(x_max)
+        x_min = math.floor(x_min)
+
+    # 主次刻度线
+    ax.xaxis.set_major_locator(ticker.MultipleLocator((math.ceil(x_max-x_min)/4)))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator((math.ceil(x_max-x_min)/8)))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator((math.ceil(y_max-y_min)/4)))
+    ax.yaxis.set_minor_locator(ticker.MultipleLocator((math.ceil(y_max-y_min)/8)))
+    
+    ax.set_ylim([y_min-(math.ceil(y_max-y_min)/8),y_max+math.ceil(y_max-y_min)/8])
+    ax.set_xlim([x_min-(math.ceil(x_max-x_min)/8),x_max+math.ceil(x_max-x_min)/8])
+    print(y_min-(int(y_max-y_min)/8),y_max+int(y_max-y_min)/8, y_max, y_min)
+    ax.set_xlabel("{}".format(x_label))
+    ax.set_ylabel("{}".format(y_label))
+
+
+    plt.legend(markerscale = 10)
+
+    plt.savefig("FUNCd-{}.png".format(len(data_lis)),dpi=300)
+
+def drawFUNC_Da(data_lis,label_lis,x_label,y_label):
+
+    # 创建你画布
+    fig,ax = plt.subplots()
+
+    ax.tick_params(which='major'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    ax.tick_params(which='minor'          # 设置对主刻度和次刻度生效
+                ,bottom=True           # 底部坐标轴
+                ,top=True
+                ,left=True             # 左侧坐标轴
+                ,right=True
+                ,direction='in'       # 设置刻度线方向，'in' 表示朝内
+                ,labelsize=20
+                )
+    # 设置边框
+    ax.spines['bottom'].set_linewidth(2)
+    ax.spines['top'].set_linewidth(2)
+    ax.spines['left'].set_linewidth(2)
+    ax.spines['right'].set_linewidth(2)
+    # 设置标题
+    #ax.set_title("PMF-1D")
+    ax.tick_params(
+         which='both'
+        ,bottom=True
+        ,left=True
+        ,direction='out'
+        ,width=2 
+        ,length=6
+    )
+
+    # draw
+    y_max = 0
+    y_min = 0
+    x_max = data_lis[0]["x"].max()
+    x_min = data_lis[0]["x"].min()
+
+    
+    for i in range(len(data_lis)):
+        ax.plot(data_lis[i]["x"],data_lis[i]["y"],alpha = 0.9,color=colors[i],linewidth=1,linestyle="-",marker=markers[i],label = label_lis[i],markersize=0.5)
+        if i == 0:
+            y_max = max(data_lis[i]["y"])
+            y_min = min(data_lis[i]["y"])
+        else:
+            if max(data_lis[i]["y"]) >= y_max:
+                y_max = max(data_lis[i]["y"])
+            if min(data_lis[i]["y"]) <= y_min:
+                y_min = min(data_lis[i]["y"])
+    y_average = []
+    for i in range(len(data_lis[0]["x"])):
+        sum = 0
+        var = len(data_lis)
+        for j in range(var):
+            sum += data_lis[j]["y"][i]
+        y_average.append(sum / var)
+    
+    ax.plot(data_lis[0]["x"],y_average,alpha = 1,color="black",linewidth=3,linestyle="-",marker="o",label = "Average",markersize=0)
+
+
+    ax.set_xlabel("{}".format(x_label))
+    ax.set_ylabel("{}".format(y_label))
+
+    dx = (x_max-x_min)/10
+    dy = (y_max-y_min)/10
+    ax.set_ylim([y_min-dy,y_max+dy])
+    ax.set_xlim([x_min-dx,x_max+dx])
+
+    plt.legend(markerscale = 10)
+    plt.savefig("FUNCd-{}.tiff".format(len(data_lis)),dpi=300)
+    plt.savefig("FUNCd-{}.jpg".format(len(data_lis)),dpi=300)
+
+def main():
+    # 接收参数用于读取数据
+    # -Ormsd : 绘制单条rmsd
+    # -Drmsd : 绘制多条rmsd
+    # -Ormsf : 绘制单条rmsf 
+    # -Drmsf : 绘制多条rmsf 
+    sign =  sys.argv[1]
+    if sign == "-Ormsd":
+        fp = sys.argv[2]
+        df = pd.read_csv(fp,header=None,names=["x","y"],sep=",")
+        if len(sys.argv) == 4:
+            var = [eval(i) for i in sys.argv[3].split(",")]
+            drawRMSD_O(df["x"],df["y"],var,fp.split(".")[0])
+        else:
+            drawRMSD_O(df["x"],df["y"],[],fp.split(".")[0])
+    elif sign == "-Drmsd":
+        # 遍历所有的数据文件
+        D_lis = []
+        L_lis = []
+        for i in range(2,len(sys.argv)):
+            df = pd.read_csv(sys.argv[i],header=None,names=["x","y"],sep=",")
+            D_lis.append(df)
+            L_lis.append(sys.argv[i].split(".")[0])
+        drawRMSD_D(D_lis,L_lis)
+        
+
+    elif sign == "-Ormsf":
+        fp = sys.argv[2]
+        df = pd.read_csv(fp,header=None,names=["x","y"],sep=",")
+        if len(sys.argv) == 4:
+            var = [eval(i) for i in sys.argv[3].split(",")]
+            drawRMSF_O(df["x"],df["y"],var,fp.split(".")[0])
+        else:
+            drawRMSF_O(df["x"],df["y"],[],fp.split(".")[0])
+
+    elif sign == "-Drmsf": 
+        # 遍历所有的数据文件
+        D_lis = []
+        L_lis = []
+        for i in range(2,len(sys.argv)):
+            df = pd.read_csv(sys.argv[i],header=None,names=["x","y"],sep=",")
+            D_lis.append(df)
+            L_lis.append(sys.argv[i].split(".")[0])
+        drawRMSF_D(D_lis,L_lis)
+   
+    elif sign == "-Opmf1":
+        fp = sys.argv[2]
+        df = pd.read_csv(fp,header=None,names=["x","y"],sep=",")
+        if len(sys.argv) == 4:
+            var = [eval(i) for i in sys.argv[3].split(",")]
+            drawPMF1_O(df["x"],df["y"],var,fp.split(".")[0])
+        else:
+            drawPMF1_O(df["x"],df["y"],[],fp.split(".")[0])
+
+    elif sign == "-Dpmf1":
+        # 遍历所有的数据文件
+        D_lis = []
+        L_lis = []
+        for i in range(2,len(sys.argv)):
+            df = pd.read_csv(sys.argv[i],header=None,names=["x","y"],sep=",")
+            D_lis.append(df)
+            L_lis.append(sys.argv[i].split(".")[0])
+        drawPMF1_D(D_lis,L_lis)
+        
+    elif sign == "-O":
+        fp = sys.argv[2]
+        df = pd.read_csv(fp,header=None,names=["x","y"],sep=",")
+        x_label = sys.argv[3]
+        y_label = sys.argv[4]
+        drawFUNC_O(df["x"],df["y"],x_label,y_label,fp.split(".")[0])
+    elif sign == "-D":
+        # 遍历所有的数据文件
+        D_lis = []
+        L_lis = []
+        for i in range(2,len(sys.argv)-2):
+            df = pd.read_csv(sys.argv[i],header=None,names=["x","y"],sep=",")
+            D_lis.append(df)
+            L_lis.append(sys.argv[i].split(".")[0])
+        drawFUNC_D(D_lis,L_lis,sys.argv[-2],sys.argv[-1])
+
+    #elif sign == "-Da":
+    #    # 遍历所有的数据文件
+    #    D_lis = []
+    #    L_lis = []
+    #    for i in range(2,len(sys.argv)-2):
+    #        df = pd.read_csv(sys.argv[i],header=None,names=["x","y"],sep=",")
+    #        D_lis.append(df)
+    #        L_lis.append(sys.argv[i].split(".")[0])
+    #    drawFUNC_Da(D_lis,L_lis,sys.argv[-2],sys.argv[-1])
+
+    else:
+        print("IAW -> ERROR: Please checck input sign!\nThe sign must be -Ormsd, -Drmsd, -Ormsf, -Drmsf, -Opmf1, -Dpmf1, -O, -D !")
+        sys.exit(-1)
+
+    
+    return 0
+
+
+if __name__ == "__main__":
+    main()

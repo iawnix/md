@@ -1,0 +1,17 @@
+#!/home/iaw/soft/conda/2024.06.1/envs/WEB39/bin/python
+import sys
+
+aa_map = {
+    'ALA': 'A', 'ARG': 'R', 'ASN': 'N', 'ASP': 'D', 'CYS': 'C',
+    'GLN': 'Q', 'GLU': 'E', 'GLY': 'G', 'HIS': 'H', 'ILE': 'I',
+    'LEU': 'L', 'LYS': 'K', 'MET': 'M', 'PHE': 'F', 'PRO': 'P',
+    'SER': 'S', 'THR': 'T', 'TRP': 'W', 'TYR': 'Y', 'VAL': 'V'
+}
+a_map = {v: k for k, v in aa_map.items()}
+
+if __name__ == "__main__":
+	in_aa = sys.argv[1].upper()
+	if len(in_aa) == 3:
+		print(aa_map[in_aa])
+	elif len(in_aa) == 1:
+		print(a_map[in_aa])

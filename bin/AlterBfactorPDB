@@ -1,0 +1,73 @@
+#!/home/iaw/soft/conda/2024.06.1/envs/WEB39/bin/python
+import numpy as np
+import Bio.PDB
+import sys
+
+
+############################################
+##  IAW: henu
+##  mail: iawhaha.com
+##  AlterBfactorPDB rmsf.csv out 
+############################################
+
+def ReadPdb(fname):
+    parser = Bio.PDB.PDBParser()
+    # 读取PDB文
+    structure = parser.get_structure(fname.split(".")[0],"{}".format(fname))
+    # 获取第一个模型
+    model = structure[0]
+    return model
+
+def ReadDat(fname):
+    out = []
+    # 读取wt.dat文件中的BC值
+    with open(fname, 'r') as f: 
+        for line in f:
+            num = line.rstrip("\n").split(",")
+            var = float(num[-1])
+            out.append(var)
+    return out
+
+
+def NormDat(dat):
+    new = []
+    min_ = min(dat)
+    max_ = max(dat)
+    # 非零
+    d = max_ - min_
+    for i in dat:
+        new.append((i-min_)/d)
+    return new        
+
+def AlterBfactor(model,BC):
+    chains = model.get_list()
+    # 遍历所有链，获取每个原子的Bfactor值
+    for chain in chains:
+        for i_,residue in enumerate(chain):
+            if i_ < len(BC):
+                bfactor = BC[i_]
+                for atom in residue:
+                    atom.set_bfactor(bfactor)
+
+def Opdb(model,fname):
+    #将新的结构对象写入PDB文件
+    io = Bio.PDB.PDBIO()
+    io.set_structure(model)
+    io.save(file = "{}.pdb".format(fname))
+
+
+
+def main():
+    pdb = sys.argv[1]
+    bc = sys.argv[2]
+    out = sys.argv[3]
+    model = ReadPdb(pdb)
+    #wt = NormDat(ReadDat(bc))
+    wt = ReadDat(bc)
+    # 会修改原来的structure
+    AlterBfactor(model,wt)
+    Opdb(model,out)
+
+
+if __name__ == "__main__":
+    main()

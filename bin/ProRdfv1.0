@@ -1,0 +1,157 @@
+#!/home/iaw/soft/conda/2024.06.1/envs/WEB39/bin/python
+from MDAnalysis.analysis.rdf import InterRDF
+import MDAnalysis as mda
+from matplotlib import pyplot as plt
+import numpy as np
+from MDAnalysis.lib import distances
+from MDAnalysis.analysis.base import AnalysisBase
+from rich import print as rprint
+from rich.progress import track
+import argparse
+import pandas as pd
+import subprocess
+import sys
+import argparse
+import rich
+from rich.console import Console
+from rich.text import Text
+from rich import print as rprint
+
+class rdf(AnalysisBase):
+    def __init__(self, g1, g2, nbins=75, range=(0.0, 15.0), g1_center = False, g2_center = False):
+        super(rdf, self).__init__(g1.universe.trajectory)
+        self.g1 = g1
+        self.g2 = g2
+        self.rdf_settings = {'bins': nbins,
+                             'range': range}
+        self.center = {
+             "g1":g1_center
+            ,"g2":g2_center
+        }
+    def _prepare(self):
+        # 储存计数
+        # count 每个区间的计数，edges 区间的左右
+        count, edges = np.histogram([-1], **self.rdf_settings)
+        count = count.astype(np.float64)
+        # 重新归零
+        count *= 0.0 
+        self.results.count = count
+        self.results.edges = edges
+        # 中心刻度值
+        self.results.bins = 0.5 * (edges[:-1] + edges[1:])
+        # 用于平均体系的盒子尺寸
+        self.v_box = 0
+        # 设置最大搜索半径
+        self._maxrange = self.rdf_settings['range'][1]
+    def _single_frame(self):
+        if self.center["g1"]:
+            _g1 = np.mean(self.g1.positions, axis=0)
+        else:
+            _g1 = self.g1.positions
+
+        if self.center["g2"]:
+            _g2 = np.mean(self.g2.positions, axis=0)
+        else:
+            _g2 = self.g2.positions
+        pairs, dist = distances.capped_distance(_g1,
+                                                _g2,
+                                                self._maxrange,
+                                                box=self._ts.dimensions)
+        min_ = np.argmin(dist)
+        #print(min_, dist[min_], pairs[min_], _g2[pairs[min_][-1]])
+        # 更新计数
+
+        # 距离的统计，其实就是，以某点为参考的圆心搜索统计
+        count, _ = np.histogram(dist, **self.rdf_settings)
+        self.results.count += count
+        self.v_box += self._ts.volume
+    def _conclude(self):
+        # 设置归一化
+        norm = self.n_frames
+        # 计算每一个球壳的体积
+        vols = np.power(self.results.edges, 3)
+        norm *= 4/3 * np.pi * np.diff(vols)
+        
+        # 参考原子
+        if self.center["g1"]:
+            Na = 1
+        else:
+            Na = len(self.g1)
+        # 计算原子
+        if self.center["g2"]:
+            Nb = 1
+        else:
+            Nb = len(self.g2)
+
+        N = Na*Nb
+        
+        # 计算平均体积
+        v_box_ = self.v_box / self.n_frames
+        
+        norm *= N/v_box_
+        self.results.rdf = self.results.count / norm
+
+
+def RunTermGraph(cmd, IN_ = None) -> str:
+    ret1 = subprocess.Popen(cmd
+                            ,bufsize=-1
+                            ,shell=False
+                            ,encoding="utf-8"
+                            ,stdin=subprocess.PIPE
+                            ,stdout=subprocess.PIPE
+                            ,stderr=subprocess.PIPE)
+    ret1_ = ret1.communicate(input= IN_)
+    out1,error1 = ret1_[0],ret1_[1]
+    code = ret1.returncode
+    if error1 != "":
+        if not code:
+            return out1[1:].rstrip("\n")
+        else:
+            rprint("Error: {}".format(error1))
+            sys.exit(1)
+    else:
+        return out1[1:].rstrip("\n")
+
+def Parm():
+
+    parser = argparse.ArgumentParser(description='Calculating the charge of small molecules in PDB')
+    parser.add_argument('-top', type=str, nargs=1,help='Prmtop')
+    parser.add_argument('-ncdf', type=str, nargs=1,help='NetCDF')
+    parser.add_argument('-A1', type=str, nargs=1,help='PDB')
+    parser.add_argument('-A2',type=str, nargs=1, help='Gaussian version')
+    parser.add_argument('-nbins', type=int, nargs=1,help='反应物')
+    parser.add_argument('-range', type=str, nargs=1,help='反应物的小分子')
+    parser.add_argument("-A1c",type=str, nargs=1,help='是否使用新的计算resp方法')
+    parser.add_argument("-A2c",type=str, nargs=1,help='pdb中原子名称所在的列')
+    parser.add_argument("-rStep",type=int, nargs=1,help='pdb中原子名称所在的列')
+
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    # 计算
+    myP = Parm()
+    top_fp = myP.top[0]
+    cdf_fp = myP.ncdf[0]
+    s1 = myP.A1[0]
+    s2 = myP.A2[0]
+    outf = cdf_fp.replace(".ncdf", "-rdf.csv")
+    # 读取轨迹
+    u = mda.Universe(top_fp, cdf_fp)
+    myRDF = rdf( g1 = u.select_atoms(s1, updating=False), g2 = u.select_atoms(s2, updating=False)
+                ,nbins=myP.nbins[0], range=[eval(myP.range[0].split(",")[0]),eval(myP.range[0].split(",")[1])]
+                ,g1_center = eval(myP.A1c[0]), g2_center = eval(myP.A2c[0]))
+    
+    myRDF.run(step = myP.rStep[0], verbose=True)
+
+    # 保存结果
+    draw_IN = ""
+    with open(outf, "w+") as F:
+        for i, ibins in enumerate(myRDF.results.bins):
+            var = "{},{}\n".format(ibins, myRDF.results.rdf[i])
+            F.writelines(var)
+            draw_IN += var
+
+    # 绘制结果
+    rprint(RunTermGraph("/home/iaw/soft/conda/2024.06.1/envs/WEB39/bin/termgraph", IN_ = draw_IN))
+
+

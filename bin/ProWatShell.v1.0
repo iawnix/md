@@ -1,0 +1,65 @@
+#!/home/iaw/soft/conda/2024.06.1/envs/WEB39/bin/python
+from MDAnalysis.analysis.rdf import InterRDF
+import MDAnalysis as mda
+from matplotlib import pyplot as plt
+import numpy as np
+from MDAnalysis.lib import distances
+from MDAnalysis.analysis.base import AnalysisBase
+from rich import print as rprint
+from rich.progress import track
+import argparse
+import pandas as pd
+import subprocess
+import sys
+import argparse
+import rich
+from rich.console import Console
+from rich.text import Text
+from rich import print as rprint
+
+def Parm():
+
+    parser = argparse.ArgumentParser(description='Calculating the charge of small molecules in PDB')
+    parser.add_argument('-top', type=str, nargs=1,help='Prmtop')
+    parser.add_argument('-ncdf', type=str, nargs=1,help='NetCDF')
+    parser.add_argument('-nbins', type=int, nargs=1,help='反应物')
+    parser.add_argument('-range', type=str, nargs=1,help='反应物的小分子')
+
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    # 计算
+    myP = Parm()
+    top_fp = myP.top[0]
+    cdf_fp = myP.ncdf[0]
+    outf = cdf_fp.replace(".ncdf", "-watershell.csv")
+    # 读取轨迹
+    u = mda.Universe(top_fp, cdf_fp)
+
+    # 选择函数
+    sel_func = lambda x1, x2: "(type OW and around {} resid 1-898) and not (type OW and around {} resid 1-898)".format(x1, x2)
+    count, edges = np.histogram([-1], bins = myP.nbins[0], range = [eval(myP.range[0].split(",")[0]),eval(myP.range[0].split(",")[1])])
+    count = count.astype(np.float64)
+    # 重新归零
+    count *= 0.0
+    count_ = count
+    edge_ = edges
+    # 中心刻度值
+    bins_ = 0.5 * (edges[:-1] + edges[1:])
+    
+
+    for ts in track(u.trajectory):
+        for i in range(1, len(edge_)):
+            n_wat = len(u.select_atoms(sel_func(edge_[i], edge_[i-1])))
+            count_[i-1] += n_wat
+    
+    # 求平均
+    count_ /= len(u.trajectory)
+    # 保存结果
+    with open(outf, "w+") as F:
+        for i, ibins in enumerate(bins_):
+            var = "{},{}, \n".format(ibins, count_[i], )
+            F.writelines(var)
+
+
+
