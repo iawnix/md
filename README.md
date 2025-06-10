@@ -9,7 +9,7 @@
     - -> N
 2. bin/AlterBfactorPDB
     - bash: `AlterBfactorPDB pro.pdb rmsf.txt pro_out`
-    - -> This script can add the rmsf values about residues in rmsf.txt as bfactors to pro.pdb and generate a new file pro_out.pdb
+    - -> This script can add the rmsf values about residues in rmsf.txt as bfactors to pro.pdb and generate a new file pro_out.pdb, Then you con run `spectrum b, blue_white_red, minimum=min_value, maximum=max_value` in Pymol
 3. bin/MDplot
     - This script is used to draw a simple analysis chart
 4. bin/MolVolume.py
