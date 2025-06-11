@@ -1,0 +1,143 @@
+#!/home/iaw/soft/conda/2024.06.1/envs/WEB39/bin/python
+import subprocess
+import os
+import sys
+import argparse
+from rich import print as rprint
+from rich.table import Table
+
+def Pipe(cmd1 : str, cmd2 : str) -> str:
+    ret = subprocess.Popen(cmd1,bufsize=-1,shell=True,encoding="utf-8",stdout = subprocess.PIPE,stderr=subprocess.PIPE)
+    out = ret.communicate(input=None)
+    out1,error1 = out[0],out[1]
+    code1 = ret.returncode
+    if error1 != "":
+        if not code1:								# 解决UBUNTU上浮点数的Note导致程序跳出
+            #print("Sucessful: {},But: {}".format(cmd1,error1))
+            return out1
+        else:
+            print("Error: {}".format(error1))
+            sys.exit(1)
+    else:
+        ret_ = subprocess.Popen(cmd2,bufsize=-1,shell=True,encoding="utf-8",stdout = subprocess.PIPE,stdin = subprocess.PIPE,stderr=subprocess.PIPE)
+        out_ = ret_.communicate(input=out1)
+        out2,error2 = out_[0],out_[1]
+        code2 = ret_.returncode
+        if error1 != "":
+            if not code2:								# 解决UBUNTU上浮点数的Note导致程序跳出
+                #print("Sucessful: {},But: {}".format(cmd2,error2))
+                return out2
+            else:
+                print("Error: {}".format(error2))
+                sys.exit(1)
+        else:
+            #print("Sucessful: {}".format(cmd2))
+            return out2
+
+def cmdout2list(string : str) -> list:
+    out = {
+            "VDWAALS":["vdW"]
+            ,"EEL":["Ele"]
+            ,"EGB":["GB"]
+            ,"ESURF":["SA"]
+            ,"DELTA G gas":["gas"]
+            ,"DELTA G solv":["sol"]
+            ,"DELTA TOTAL":["Tatol"]
+            }
+    for i in string.split("\n"):
+        if i.startswith("------") or i == "":
+            pass
+        else:
+            for k in out.keys():
+                if i.startswith(k):
+                    out[k].extend([eval(ss) for ss in i.replace(k,"").replace("  "," ").split(" ") if ss != ""])
+    return out
+
+
+def Parm():
+
+    parser = argparse.ArgumentParser(description='Obtain the results of GBSA')
+    parser.add_argument('-In', type=str, nargs=1,help='GBSA RESULT')
+    parser.add_argument('-Out', type=str, nargs=1,help='txt')
+    
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    myP = Parm()
+    fp: str = myP.In[0]
+    outfp: str = myP.Out[0]
+    cmd1 = "grep -A11 'Differences (Complex - Receptor - Ligand):' {}".format(fp)
+    cmd2 = "grep -A9 '\--------------'"
+    out = cmdout2list(Pipe(cmd1, cmd2))
+    print(out)
+    table = Table(title="Energy Contribution Decomposition (kcal/mol)")
+    table.add_column("ΔG_Ele", style="bold magenta", justify="center")
+    table.add_column("ΔG_Gb", style="bold magenta", justify="center")
+    table.add_column("ΔG_vdW", style="bold magenta", justify="center")
+    table.add_column("ΔG_SA", style="bold magenta", justify="center")
+    table.add_column("ΔTotal", style="bold magenta", justify="center")
+    table.add_row(   "{:.2f}±{:.2f}".format(out["EEL"][1], out["EEL"][-1])
+                               , "{:.2f}±{:.2f}".format(out["EGB"][1], out["EGB"][-1])
+                               , "{:.2f}±{:.2f}".format(out["VDWAALS"][1], out["VDWAALS"][-1])
+                               , "{:.2f}±{:.2f}".format(out["ESURF"][1], out["ESURF"][-1])
+                               , "{:.2f}±{:.2f}".format(out["DELTA TOTAL"][1], out["DELTA TOTAL"][-1]))
+    rprint(table)
+
+    #in_ss = "ΔGpol,{:.2f}\nΔGnonpol,{:.2f}\n".format(out["EEL"][1]+out["EGB"][1], out["VDWAALS"][1]+out["ESURF"][1])
+    
+    sym1 = "▇"
+    sym0 = " "
+
+    num1 = out["EEL"][1]+out["EGB"][1]
+    num2 = out["VDWAALS"][1]+out["ESURF"][1]
+    # 获取绝对值最大
+    x_max = max([abs(num1), abs(num2)])
+    d = x_max/50
+    n_1 = int(num1/x_max*50)
+    n_2 = int(num2/x_max*50)
+    
+    s_1 = "   ΔGpol  "
+    if n_1 <= 0:
+        for i in range(50-abs(n_1)):
+            s_1 += sym0
+        for i in range(abs(n_1)):
+            s_1 += sym1
+        s_1 += "|"
+        s_1 += "".join([sym0 for i in range(50)])
+    if n_1 >0:
+        s_1 += "".join([sym0 for i in range(50)])
+        s_1 += "|"
+        for i in range(abs(n_1)):
+            s_1 += sym1
+        for i in range(50-abs(n_1)):
+            s_1 += sym0
+    s_1 += "  {:.2f}".format(num1)
+    
+    s_2 = "ΔGnonpol  "
+    if n_2 <= 0:
+        for i in range(50-abs(n_2)):
+            s_2 += sym0
+        for i in range(abs(n_2)):
+            s_2 += sym1
+        s_2 += "|"
+        s_2 += "".join([sym0 for i in range(50)])
+    if n_2 >0:
+        s_2 += "".join([sym0 for i in range(50)])
+        s_2 += "|"
+        for i in range(abs(n_2)):
+            s_2 += sym1
+        for i in range(50-abs(n_2)):
+            s_2 += sym0
+    s_2 += "  {:.2f}".format(num2)
+
+    rprint("{}\n{}".format(s_1, s_2))
+    with open(outfp, "w+") as F:
+        F.writelines("Gpol,{:.2f}\nnonpol,{:.2f}\nEle,{:.2f},{:.2f}\nGb,{:.2f},{:.2f}\nvdW,{:.2f},{:.2f}\nSA,{:.2f},{:.2f}\nTotal,{:.2f},{:.2f}".format(
+             num1,num2
+            ,out["EEL"][1], out["EEL"][-1]
+            ,out["EGB"][1], out["EGB"][-1]
+            ,out["VDWAALS"][1], out["VDWAALS"][-1]
+            ,out["ESURF"][1], out["ESURF"][-1]
+            ,out["DELTA TOTAL"][1], out["DELTA TOTAL"][-1]
+        ))
+
