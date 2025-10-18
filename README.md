@@ -17,3 +17,6 @@
     - This script is used to estimate the volume of molecules using Monte Carlo method based on the atomic vdw radius in the top file
 5. bin/RESP.py
     - This script is used to assist in the construction of the Amber position for small molecules, and the charge is calculated using Gaussian's RESP charge
+6. bin/ProRdfv1.0
+    - This script is designed to calculate the radial distribution function (RDF) between proteins and water molecules. Note that the method for calculating the box volume has been revised in this script. Instead of using a single frame's box volume, it calculates the average box volume across all frames. This approach provides a more accurate representation of the system's average properties over time.
+
