@@ -99,6 +99,20 @@ def OutToMolFrcmod(OBJ:str) -> None:
     runCMD(cmd_parmchk2)
     runCMD(cmd_antechamber_AC)
 
+def BccToMolFrcmod(OBJ: str, Charge: int):
+    cmd_antechamber = "antechamber -i {}.pdb -fi pdb -o {}.mol2 -fo mol2 -nc {} -c bcc -at amber -pf y".format(OBJ, OBJ, Charge)
+    """
+    -s    ff parm set, it is suppressed by "-p" option
+            1 or gaff:    gaff (the default)
+            2 or gaff2:   gaff2
+            3 or parm99:  parm99
+            4 or parm10:  parm10
+            5 or lipid14: lipid14
+    """
+    cmd_parmchk2 = "parmchk2 -i {}.mol2 -f mol2 -o {}.frcmod -s gaff".format(OBJ,OBJ)
+    runCMD(cmd_antechamber)
+    runCMD(cmd_parmchk2)
+
 def Alter(file2 : str, OBJ : str, whereisATOMname : int):
     file1 = "{}.mol2".format(OBJ)
 
@@ -175,11 +189,14 @@ def main():
         # run GAUSS
         GAUSS(parm.OBJ[0],parm.Gs[0])
     elif  parm.mode[0] == 3:
-        # creat OBJ.mol2 OBJ.fremod OBJ.ac
+        # creat OBJ.mol2 OBJ.frcmod OBJ.ac
         OutToMolFrcmod(parm.OBJ[0])
     elif  parm.mode[0] == 4:
         # alter in.PDB 
         Alter(parm.In[0],parm.OBJ[0],parm.Where[0])
+    elif parm.mode[0] == 5:
+        # run sqm bcc
+        BccToMolFrcmod(parm.OBJ[0], parm.Charge[0])
     else:
         print("ERROR: please check mode")
         sys.exit(1)
